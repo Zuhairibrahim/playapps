@@ -9,227 +9,91 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'ads/ad_consent.dart';
-import 'screens/game_screen.dart';
+import 'core/app_theme.dart';
+import 'screens/splash_screen.dart';
 import 'services/ad_manager.dart';
-import 'widgets/banner_ad_widget.dart';
-import 'widgets/native_ad_widget.dart';
-import 'core/ownership/ownership_guard.dart';
+import 'services/game_settings.dart';
 
-/// بصمة الملكية الفكرية — يُمنع حذفها أو تعديلها (انظر ملف LICENSE)
-/// Proprietary ownership fingerprint — must NOT be removed or altered (see LICENSE).
-const String kAppOwnershipFingerprint =
-    'OWNER:Zuhair-Ibrahim|PROJECT:playapps|YEAR:2026|'
-    'LICENSE:ALL-RIGHTS-RESERVED|SIG:ZI-2026-PLA-PROPRIETARY';
-
-void main() async {
-  assert(ownershipSealsIntact(), 'Ownership seals must remain intact — see LICENSE');
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // ترتيب Google الرسمي: موافقة -> تهيئة الإعلانات
   await AdConsent.instance.collectConsent();
-  MobileAds.instance.initialize();
+  await MobileAds.instance.initialize();
+
+  // تحميل إعدادات اللاعب المحلية
+  await GameSettings.instance.load();
 
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    systemNavigationBarColor: AppTheme.bgDeep,
+  ));
 
-  runApp(const SnakeIoApp());
+  runApp(const SnakeLuxApp());
 }
 
-class SnakeIoApp extends StatefulWidget {
-  const SnakeIoApp({super.key});
+class SnakeLuxApp extends StatefulWidget {
+  const SnakeLuxApp({super.key});
 
   @override
-  State<SnakeIoApp> createState() => _SnakeIoAppState();
+  State<SnakeLuxApp> createState() => _SnakeLuxAppState();
 }
 
-class _SnakeIoAppState extends State<SnakeIoApp> {
+class _SnakeLuxAppState extends State<SnakeLuxApp> with WidgetsBindingObserver {
   final AdManager _adManager = AdManager();
+  AppLifecycleState _lastState = AppLifecycleState.resumed;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _adManager.loadAllAds();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _adManager.disposeAll();
     super.dispose();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // إعلان "فتح التطبيق" عند العودة من الخلفية
+    if (state == AppLifecycleState.resumed &&
+        _lastState == AppLifecycleState.paused) {
+      _adManager.showAppOpenAdIfAvailable();
+    }
+    _lastState = state;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Snake.io',
+      title: 'لعبة الحنش المحترف',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFF12121A),
-        fontFamily: 'Cairo',
-      ),
-      home: const SplashScreen(),
-    );
-  }
-}
-
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
-
-  @override
-  State<SplashScreen> createState() => _SplashScreenState();
-}
-
-class _SplashScreenState extends State<SplashScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.electric_bolt, size: 80, color: Colors.greenAccent),
-            SizedBox(width: 30),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Snake.io',
-                  style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-                Text(
-                  'Mobile Experience',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-                SizedBox(height: 20),
-                CircularProgressIndicator(color: Colors.greenAccent),
-              ],
-            ),
-          ],
+        scaffoldBackgroundColor: AppTheme.bgDeep,
+        colorScheme: const ColorScheme.dark(
+          primary: AppTheme.neon,
+          secondary: AppTheme.gold,
+          surface: AppTheme.surface,
+        ),
+        dialogTheme: const DialogThemeData(
+          backgroundColor: Colors.transparent,
+        ),
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          },
         ),
       ),
-    );
-  }
-}
-
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final AdManager _adManager = AdManager();
-
-  @override
-  void initState() {
-    super.initState();
-    _adManager.loadAppOpenAd();
-    _adManager.showAppOpenAdIfAvailable();
-    _adManager.loadInterstitialAd();
-    _adManager.loadRewardedAd();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.videogame_asset, size: 50, color: Colors.greenAccent),
-                      SizedBox(width: 15),
-                      Text(
-                        'Snake.io Mobile',
-                        style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
-                  SizedBox(
-                    width: 250,
-                    height: 60,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.greenAccent,
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                        elevation: 5,
-                      ),
-                      onPressed: () {
-                        _adManager.showInterstitialAd(
-                          onDismissed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => const GameScreen()),
-                            );
-                          },
-                        );
-                      },
-                      child: const Text(
-                        'ابدأ اللعب',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          Positioned(
-            top: 10,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: BannerAdWidget(adUnitId: AdManager.bannerAdUnitId),
-            ),
-          ),
-
-          Positioned(
-            bottom: 10,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: BannerAdWidget(adUnitId: AdManager.bannerAdUnitId),
-            ),
-          ),
-
-          Positioned(
-            top: 70,
-            right: 10,
-            child: SizedBox(
-              width: 320,
-              height: 300,
-              child: NativeAdWidget(adUnitId: AdManager.nativeAdUnitId),
-            ),
-          ),
-        ],
-      ),
+      home: const SplashScreen(),
     );
   }
 }

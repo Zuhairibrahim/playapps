@@ -6,8 +6,12 @@
 		<true/>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
-		<key>CFBundleDisplayName</key>
-		<string>Playapps</string>
+	<key>CFBundleDisplayName</key>
+	<string>لعبة الحنش المحترف</string>
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-1396394529471927~2425070430</string>
+	<key>GADIsAdManagerApp</key>
+	<true/>
 		<key>CFBundleExecutable</key>
 		<string>$(EXECUTABLE_NAME)</string>
 		<key>CFBundleIdentifier</key>

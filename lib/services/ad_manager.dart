@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show VoidCallback;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 class AdManager {
@@ -6,14 +7,14 @@ class AdManager {
   factory AdManager() => _instance;
   AdManager._internal();
 
-  // معرّفات إعلانات تجريبية (وهمية) رسمية من Google
-  static const String appId = 'ca-app-pub-3940256099942544~3347511713';
-  static const String bannerAdUnitId = 'ca-app-pub-3940256099942544/6300978111';
-  static const String interstitialAdUnitId = 'ca-app-pub-3940256099942544/1033173712';
-  static const String rewardedAdUnitId = 'ca-app-pub-3940256099942544/5224354917';
-  static const String rewardedInterstitialAdUnitId = 'ca-app-pub-3940256099942544/5354046614';
-  static const String nativeAdUnitId = 'ca-app-pub-3940256099942544/2247696110';
-  static const String appOpenAdUnitId = 'ca-app-pub-3940256099942544/9257395921';
+  // معرّفات إعلانات AdMob الحقيقية للتطبيق
+  static const String appId = 'ca-app-pub-1396394529471927~2425070430';
+  static const String bannerAdUnitId = 'ca-app-pub-1396394529471927/1882144955';
+  static const String interstitialAdUnitId = 'ca-app-pub-1396394529471927/6817853420';
+  static const String rewardedAdUnitId = 'ca-app-pub-1396394529471927/5240128003';
+  static const String rewardedInterstitialAdUnitId = 'ca-app-pub-1396394529471927/6873693741';
+  static const String nativeAdUnitId = 'ca-app-pub-1396394529471927/3272440212';
+  static const String appOpenAdUnitId = 'ca-app-pub-1396394529471927/1652236781';
 
   InterstitialAd? _interstitialAd;
   RewardedAd? _rewardedAd;
@@ -28,6 +29,18 @@ class AdManager {
 
   Timer? _autoInterstitialTimer;
   int _autoAdCounter = 0;
+
+  // ===== التحكم بتكرار الإعلانات البينية =====
+  // فاصل زمني أدنى بين البينيات: تكثيف مربح مع الالتزام بسياسات AdMob
+  // حتى لا تُحظر الحساب وتبقى الإعلانات تعمل 100%.
+  DateTime? _lastInterstitialAt;
+  static const Duration _minInterstitialGap = Duration(seconds: 50);
+
+  bool get canShowInterstitial {
+    if (!_isInterstitialReady || _interstitialAd == null) return false;
+    if (_lastInterstitialAt == null) return true;
+    return DateTime.now().difference(_lastInterstitialAt!) >= _minInterstitialGap;
+  }
 
   // ===================== App Open Ad =====================
   void loadAppOpenAd() {
@@ -99,28 +112,35 @@ class AdManager {
   }
 
   void showInterstitialAd({VoidCallback? onDismissed}) {
-    if (_isInterstitialReady && _interstitialAd != null) {
-      _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
-        onAdDismissedFullScreenContent: (InterstitialAd ad) {
-          ad.dispose();
-          _interstitialAd = null;
-          _isInterstitialReady = false;
-          onDismissed?.call();
-          loadInterstitialAd();
-        },
-        onAdFailedToShowFullScreenContent: (InterstitialAd ad, AdError error) {
-          ad.dispose();
-          _interstitialAd = null;
-          _isInterstitialReady = false;
-          onDismissed?.call();
-          loadInterstitialAd();
-        },
-      );
-      _interstitialAd!.show();
-    } else {
+    // احترام الفاصل الزمني — إن حان الوقت قريباً نتجاهل الطلب بهدوء
+    final tooSoon = _lastInterstitialAt != null &&
+        DateTime.now().difference(_lastInterstitialAt!) < _minInterstitialGap;
+
+    if (tooSoon || !_isInterstitialReady || _interstitialAd == null) {
       onDismissed?.call();
-      loadInterstitialAd();
+      if (!_isInterstitialReady) loadInterstitialAd();
+      return;
     }
+
+    _lastInterstitialAt = DateTime.now();
+
+    _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (InterstitialAd ad) {
+        ad.dispose();
+        _interstitialAd = null;
+        _isInterstitialReady = false;
+        onDismissed?.call();
+        loadInterstitialAd();
+      },
+      onAdFailedToShowFullScreenContent: (InterstitialAd ad, AdError error) {
+        ad.dispose();
+        _interstitialAd = null;
+        _isInterstitialReady = false;
+        onDismissed?.call();
+        loadInterstitialAd();
+      },
+    );
+    _interstitialAd!.show();
   }
 
   // ===================== Rewarded Ad =====================
@@ -277,5 +297,3 @@ class AdManager {
     _homeBannerAd = null;
   }
 }
-
-typedef VoidCallback = void Function();
