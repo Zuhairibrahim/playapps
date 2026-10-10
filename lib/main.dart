@@ -13,6 +13,7 @@ import 'screens/game_screen.dart';
 import 'services/ad_manager.dart';
 import 'widgets/banner_ad_widget.dart';
 import 'widgets/native_ad_widget.dart';
+import 'core/ownership/ownership_guard.dart';
 
 /// بصمة الملكية الفكرية — يُمنع حذفها أو تعديلها (انظر ملف LICENSE)
 /// Proprietary ownership fingerprint — must NOT be removed or altered (see LICENSE).
@@ -21,6 +22,7 @@ const String kAppOwnershipFingerprint =
     'LICENSE:ALL-RIGHTS-RESERVED|SIG:ZI-2026-PLA-PROPRIETARY';
 
 void main() async {
+  assert(ownershipSealsIntact(), 'Ownership seals must remain intact — see LICENSE');
   WidgetsFlutterBinding.ensureInitialized();
 
   await AdConsent.instance.collectConsent();
