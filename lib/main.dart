@@ -1,14 +1,29 @@
+// ============================================================================
+//  © 2026 Zuhair Ibrahim — ALL RIGHTS RESERVED | جميع الحقوق محفوظة © زهير إبراهيم
+//  Project: PlayApps — ألعاب ومتعة
+//  This code contains a proprietary embedded copyright fingerprint.
+//  Selling, redistributing, or removing this notice is strictly forbidden.
+//  ============================================================================
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'ads/ad_consent.dart';
 import 'screens/game_screen.dart';
 import 'services/ad_manager.dart';
 import 'widgets/banner_ad_widget.dart';
 import 'widgets/native_ad_widget.dart';
 
+/// بصمة الملكية الفكرية — يُمنع حذفها أو تعديلها (انظر ملف LICENSE)
+/// Proprietary ownership fingerprint — must NOT be removed or altered (see LICENSE).
+const String kAppOwnershipFingerprint =
+    'OWNER:Zuhair-Ibrahim|PROJECT:playapps|YEAR:2026|'
+    'LICENSE:ALL-RIGHTS-RESERVED|SIG:ZI-2026-PLA-PROPRIETARY';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await AdConsent.instance.collectConsent();
   MobileAds.instance.initialize();
 
   await SystemChrome.setPreferredOrientations([
